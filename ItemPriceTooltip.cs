@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Numerics;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Text.SeStringHandling;
@@ -18,14 +17,10 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
 
     public int? LastItemQuantity;
 
-    private static readonly CultureInfo FormatProvider = CultureInfo.CurrentCulture.NumberFormat.NumberGroupSeparator == "\u2009"
-        ? CultureInfo.InvariantCulture
-        : CultureInfo.CurrentCulture;
-
     public static unsafe void RestoreToNormal(AtkUnitBase* itemTooltip) {
         for (var i = 0; i < itemTooltip->UldManager.NodeListCount; i++) {
             var n = itemTooltip->UldManager.NodeList[i];
-            if (n->NodeId != NodeId || !n->IsVisible())
+            if (n->NodeID != NodeId || !n->IsVisible)
                 continue;
             n->ToggleVisibility(false);
             var insertNode = itemTooltip->GetNodeById(2);
@@ -34,7 +29,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height - n->Height - 4));
             itemTooltip->WindowNode->Component->UldManager.RootNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
             itemTooltip->WindowNode->Component->UldManager.RootNode->PrevSiblingNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
-            insertNode->SetYFloat(insertNode->Y - n->Height - 4);
+            insertNode->SetY(insertNode->Y - n->Height - 4);
             break;
         }
     }
@@ -43,6 +38,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         var refresh = plugin.Configuration.RefreshWithAlt && Service.KeyState[VirtualKey.MENU];
         var (marketBoardData, lookupState) = plugin.ItemPriceLookup.Get(Service.GameGui.HoveredItem, refresh);
         var payloads = ParseMbData(Service.GameGui.HoveredItem >= 500000, marketBoardData, lookupState);
+
         UpdateItemTooltip(itemTooltip, payloads);
     }
 
@@ -54,7 +50,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         AtkTextNode* priceNode = null;
         for (var i = 0; i < itemTooltip->UldManager.NodeListCount; i++) {
             var node = itemTooltip->UldManager.NodeList[i];
-            if (node == null || node->NodeId != NodeId)
+            if (node == null || node->NodeID != NodeId)
                 continue;
             priceNode = (AtkTextNode*)node;
             break;
@@ -69,7 +65,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                 return;
             priceNode = IMemorySpace.GetUISpace()->Create<AtkTextNode>();
             priceNode->AtkResNode.Type = NodeType.Text;
-            priceNode->AtkResNode.NodeId = NodeId;
+            priceNode->AtkResNode.NodeID = NodeId;
             priceNode->AtkResNode.NodeFlags = NodeFlags.AnchorLeft | NodeFlags.AnchorTop;
             priceNode->AtkResNode.X = 16;
             priceNode->AtkResNode.Width = 50;
@@ -92,18 +88,16 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         priceNode->AtkResNode.ToggleVisibility(true);
         priceNode->SetText(new SeString(payloads).Encode());
         priceNode->ResizeNodeForCurrentText();
-        priceNode->AtkResNode.SetYFloat(itemTooltip->WindowNode->AtkResNode.Height - 8);
-        itemTooltip->WindowNode->SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height + priceNode->AtkResNode.Height + 4));
-        itemTooltip->WindowNode->AtkResNode.SetHeight(itemTooltip->WindowNode->Height);
-        itemTooltip->WindowNode->Component->UldManager.RootNode->SetHeight(itemTooltip->WindowNode->Height);
-        itemTooltip->WindowNode->Component->UldManager.RootNode->PrevSiblingNode->SetHeight(itemTooltip->WindowNode->Height);
-        itemTooltip->RootNode->SetHeight(itemTooltip->WindowNode->Height);
-        var remainingSpace = ImGuiHelpers.MainViewport.WorkSize.Y - itemTooltip->Y - itemTooltip->GetScaledHeight(true) - 36;
+        priceNode->AtkResNode.SetY(itemTooltip->WindowNode->AtkResNode.Height - 8);
+        itemTooltip->WindowNode->AtkResNode.SetHeight((ushort)(itemTooltip->WindowNode->AtkResNode.Height + priceNode->AtkResNode.Height + 4));
+        itemTooltip->WindowNode->Component->UldManager.RootNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
+        itemTooltip->WindowNode->Component->UldManager.RootNode->PrevSiblingNode->SetHeight(itemTooltip->WindowNode->AtkResNode.Height);
+        var remainingSpace = ImGuiHelpers.MainViewport.WorkSize.Y - itemTooltip->Y - itemTooltip->WindowNode->AtkResNode.Height - 36;
         if (remainingSpace < 0) {
             plugin.Hooks.ItemDetailSetPositionPreservingOriginal(itemTooltip, itemTooltip->X, (short)(itemTooltip->Y + remainingSpace), 1);
         }
 
-        insertNode->SetYFloat(insertNode->Y + priceNode->AtkResNode.Height + 4);
+        insertNode->SetY(insertNode->Y + priceNode->AtkResNode.Height + 4);
     }
 
     private List<Payload> ParseMbData(bool hq, MarketBoardData? mbData, LookupState lookupState) {
@@ -113,7 +107,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         if (lookupState == LookupState.Faulted) {
             payloads.Add(new UIForegroundPayload(20));
             payloads.Add(new IconPayload(BitmapFontIcon.Warning));
-            payloads.Add(new TextPayload(" Failed to obtain marketboard info.\n        The Universalis API is likely experiencing issues.\n        Please be patient or check the Universalis discord.\n        Press alt to retry or check the /xllog."));
+            payloads.Add(new TextPayload(" Failed to obtain marketboard info.\n        This is likely an issue with Universalis.\n        Press alt to retry or check the /xllog."));
             payloads.Add(new UIForegroundPayload(0));
         } else if (mbData == null) {
             payloads.Add(new UIForegroundPayload(20));
@@ -122,9 +116,9 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             payloads.Add(new UIForegroundPayload(0));
         } else {
             var ownWorld = mbData.HomeWorld;
-            var ownDc = mbData.Datacenter;
-            var minWorld = GetNqHqData(mbData.MinimumPrice.Datacenter.Nq?.World, mbData.MinimumPrice.Datacenter.Hq?.World);
-            var minDc = GetNqHqData(mbData.MinimumPrice.Region.Nq?.Datacenter, mbData.MinimumPrice.Region.Hq?.Datacenter);
+            var ownDc = mbData.HomeDatacenter;
+            var minWorld = GetNqHqData(mbData.MinimumPriceNQ?.World, mbData.MinimumPriceHQ?.World);
+            var minDc = GetNqHqData(mbData.RegionMinimumPriceNQ?.Datacenter, mbData.RegionMinimumPriceHQ?.Datacenter);
 
             var priceHeader = false;
             void PriceHeader() {
@@ -137,9 +131,9 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                 if (nqPrice != null && (plugin.Configuration.ShowBothNqAndHq || !hq)) {
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{nqPrice.Value.ToString(format, FormatProvider)}{(withGilIcon ? GilIcon : "")}"));
+                    payloads.Add(new TextPayload($"{nqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
                     if (plugin.Configuration.ShowStackSalePrice && !hq && LastItemQuantity > 1 && withGilIcon)
-                        payloads.Add(new TextPayload($" ({(nqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, FormatProvider)}{GilIcon})"));
+                        payloads.Add(new TextPayload($" ({(nqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, null)}{GilIcon})"));
                     if (!hq)
                         payloads.Add(new UIForegroundPayload(0));
                 }
@@ -149,9 +143,9 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
 
                     if (hq)
                         payloads.Add(new UIForegroundPayload(506));
-                    payloads.Add(new TextPayload($"{HQIcon}{hqPrice.Value.ToString(format, FormatProvider)}{(withGilIcon ? GilIcon : "")}"));
+                    payloads.Add(new TextPayload($"{HQIcon}{hqPrice.Value.ToString(format, null)}{(withGilIcon ? GilIcon : "")}"));
                     if (plugin.Configuration.ShowStackSalePrice && hq && LastItemQuantity > 1 && withGilIcon)
-                        payloads.Add(new TextPayload($" ({(hqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, FormatProvider)}{GilIcon})"));
+                        payloads.Add(new TextPayload($" ({(hqPrice.Value * T.CreateChecked(LastItemQuantity.Value)).ToString(format, null)}{GilIcon})"));
                     if (hq)
                         payloads.Add(new UIForegroundPayload(0));
                 }
@@ -165,19 +159,18 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             }
 
             T? GetNqHqData<T>(T? nqData, T? hqData) {
-                if ((hq ? hqData : nqData) is { } result)
-                    return result;
+                var result = hq ? hqData : nqData;
                 if (plugin.Configuration.ShowBothNqAndHq)
-                    return hq ? nqData : hqData;
-                return default;
+                    result ??= hq ? nqData : hqData;
+                return result;
             }
 
             if (minDc != ownDc && minDc != null && plugin.Configuration.ShowRegion) {
                 PriceHeader();
 
                 var minWorldRegion = hq
-                    ? mbData.MinimumPrice.Region.Hq?.World ?? mbData.MinimumPrice.Region.Nq?.World
-                    : mbData.MinimumPrice.Region.Nq?.World ?? mbData.MinimumPrice.Region.Hq?.World;
+                    ? mbData.RegionMinimumPriceHQ?.World ?? mbData.RegionMinimumPriceNQ?.World
+                    : mbData.RegionMinimumPriceNQ?.World ?? mbData.RegionMinimumPriceHQ?.World;
 
                 payloads.Add(new TextPayload("\n  Cheapest ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
@@ -185,10 +178,10 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                 if (plugin.Configuration.ShowDatacenterOnCrossWorlds)
                     payloads.Add(new TextPayload($" {minDc}"));
                 payloads.Add(new TextPayload("): "));
-                PrintNqHq(mbData.MinimumPrice.Region.Nq?.Price, mbData.MinimumPrice.Region.Hq?.Price);
+                PrintNqHq(mbData.RegionMinimumPriceNQ?.Price, mbData.RegionMinimumPriceHQ?.Price);
 
                 if (plugin.Configuration.ShowAge) {
-                    var recentTime = hq ? mbData.MinimumPrice.Region.Hq?.Time : mbData.MinimumPrice.Region.Nq?.Time;
+                    var recentTime = hq ? mbData.RegionMinimumPriceHQ?.Time : mbData.RegionMinimumPriceNQ?.Time;
                     PrintTime(recentTime);
                 }
             }
@@ -199,22 +192,22 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                 payloads.Add(new TextPayload("\n  Cheapest ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                 payloads.Add(new TextPayload($"{minWorld}): "));
-                PrintNqHq(mbData.MinimumPrice.Datacenter.Nq?.Price, mbData.MinimumPrice.Datacenter.Hq?.Price);
+                PrintNqHq(mbData.MinimumPriceNQ?.Price, mbData.MinimumPriceHQ?.Price);
 
                 if (plugin.Configuration.ShowAge) {
-                    var recentTime = hq ? mbData.MinimumPrice.Datacenter.Hq?.Time : mbData.MinimumPrice.Datacenter.Nq?.Time;
+                    var recentTime = hq ? mbData.MinimumPriceHQ?.Time : mbData.MinimumPriceNQ?.Time;
                     PrintTime(recentTime);
                 }
             }
 
-            if (GetNqHqData(mbData.MinimumPrice.World.Nq,  mbData.MinimumPrice.World.Hq) != null && (plugin.Configuration.ShowWorld || (plugin.Configuration.ShowDatacenter && minWorld == ownWorld))) {
+            if (GetNqHqData(mbData.OwnMinimumPriceNQ,  mbData.OwnMinimumPriceHQ) != null && (plugin.Configuration.ShowWorld || (plugin.Configuration.ShowDatacenter && minWorld == ownWorld))) {
                 PriceHeader();
 
                 payloads.Add(new TextPayload($"\n  Home ({ownWorld}): "));
-                PrintNqHq(mbData.MinimumPrice.World.Nq?.Price, mbData.MinimumPrice.World.Hq?.Price);
+                PrintNqHq(mbData.OwnMinimumPriceNQ?.Price, mbData.OwnMinimumPriceHQ?.Price);
 
                 if (plugin.Configuration.ShowAge) {
-                    var recentTime = hq ? mbData.MinimumPrice.World.Hq?.Time : mbData.MinimumPrice.World.Nq?.Time;
+                    var recentTime = hq ? mbData.OwnMinimumPriceHQ?.Time : mbData.OwnMinimumPriceNQ?.Time;
                     PrintTime(recentTime);
                 }
             }
@@ -228,22 +221,22 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                 recentHeader = true;
             }
 
-            var recentWorld = GetNqHqData(mbData.MostRecentPurchase.Datacenter.Nq?.World, mbData.MostRecentPurchase.Datacenter.Hq?.World);
-            var recentDc = GetNqHqData(mbData.MostRecentPurchase.Region.Nq?.Datacenter, mbData.MostRecentPurchase.Region.Hq?.Datacenter);
+            var recentWorld = GetNqHqData(mbData.MostRecentPurchaseNQ?.World, mbData.MostRecentPurchaseHQ?.World);
+            var recentDc = GetNqHqData(mbData.RegionMostRecentPurchaseNQ?.Datacenter, mbData.RegionMostRecentPurchaseHQ?.Datacenter);
             if (recentDc != ownDc && recentDc != null && plugin.Configuration.ShowMostRecentPurchaseRegion) {
                 RecentHeader();
 
                 var recentWorldRegion = hq
-                    ? mbData.MostRecentPurchase.Region.Hq?.World ?? mbData.MostRecentPurchase.Region.Nq?.World
-                    : mbData.MostRecentPurchase.Region.Nq?.World ?? mbData.MostRecentPurchase.Region.Hq?.World;
+                    ? mbData.RegionMostRecentPurchaseHQ?.World ?? mbData.RegionMostRecentPurchaseNQ?.World
+                    : mbData.RegionMostRecentPurchaseNQ?.World ?? mbData.RegionMostRecentPurchaseHQ?.World;
 
-                payloads.Add(new TextPayload("\n  Region ("));
+                payloads.Add(new TextPayload("\n  Cheapest ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                 payloads.Add(new TextPayload($"{recentWorldRegion} {recentDc}): "));
-                PrintNqHq(mbData.MostRecentPurchase.Region.Nq?.Price, mbData.MostRecentPurchase.Region.Hq?.Price);
+                PrintNqHq(mbData.RegionMostRecentPurchaseNQ?.Price, mbData.RegionMostRecentPurchaseHQ?.Price);
 
                 if (plugin.Configuration.ShowAge) {
-                    var recentTime = hq ? mbData.MostRecentPurchase.Region.Hq?.Time : mbData.MostRecentPurchase.Region.Nq?.Time;
+                    var recentTime = hq ? mbData.RegionMostRecentPurchaseHQ?.Time : mbData.RegionMostRecentPurchaseNQ?.Time;
                     PrintTime(recentTime);
                 }
             }
@@ -251,57 +244,41 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             if (recentWorld != ownWorld && recentWorld != null && (plugin.Configuration.ShowMostRecentPurchase || (plugin.Configuration.ShowMostRecentPurchaseRegion && recentDc == ownDc))) {
                 RecentHeader();
 
-                payloads.Add(new TextPayload("\n  Datacenter ("));
+                payloads.Add(new TextPayload("\n  Cheapest ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                 payloads.Add(new TextPayload($"{recentWorld}): "));
-                PrintNqHq(mbData.MostRecentPurchase.Datacenter.Nq?.Price, mbData.MostRecentPurchase.Datacenter.Hq?.Price);
+                PrintNqHq(mbData.MostRecentPurchaseNQ?.Price, mbData.MostRecentPurchaseHQ?.Price);
 
                 if (plugin.Configuration.ShowAge) {
-                    var recentTime = hq ? mbData.MostRecentPurchase.Datacenter.Hq?.Time : mbData.MostRecentPurchase.Datacenter.Nq?.Time;
+                    var recentTime = hq ? mbData.MostRecentPurchaseHQ?.Time : mbData.MostRecentPurchaseNQ?.Time;
                     PrintTime(recentTime);
                 }
             }
 
-            if (GetNqHqData(mbData.MostRecentPurchase.World.Nq, mbData.MostRecentPurchase.World.Hq) != null && (plugin.Configuration.ShowMostRecentPurchaseWorld || (plugin.Configuration.ShowMostRecentPurchase && recentWorld == ownWorld))) {
+            if (GetNqHqData(mbData.OwnMostRecentPurchaseNQ, mbData.OwnMostRecentPurchaseHQ) != null && (plugin.Configuration.ShowMostRecentPurchaseWorld || (plugin.Configuration.ShowMostRecentPurchase && recentWorld == ownWorld))) {
                 RecentHeader();
 
                 payloads.Add(new TextPayload($"\n  Home ({ownWorld}): "));
-                PrintNqHq(mbData.MostRecentPurchase.World.Nq?.Price, mbData.MostRecentPurchase.World.Hq?.Price);
+                PrintNqHq(mbData.OwnMostRecentPurchaseNQ?.Price, mbData.OwnMostRecentPurchaseHQ?.Price);
 
                 if (plugin.Configuration.ShowAge) {
-                    var recentTime = hq ? mbData.MostRecentPurchase.World.Hq?.Time : mbData.MostRecentPurchase.World.Nq?.Time;
+                    var recentTime = hq ? mbData.OwnMostRecentPurchaseHQ?.Time : mbData.OwnMostRecentPurchaseNQ?.Time;
                     PrintTime(recentTime);
                 }
             }
 
-            if (plugin.Configuration.ShowAverageSalePriceIn > 0) {
-                var (salePrice, scope) = plugin.Configuration.ShowAverageSalePriceIn switch {
-                    1 => (mbData.AverageSalePrice.World, mbData.HomeWorld),
-                    2 => (mbData.AverageSalePrice.Datacenter, mbData.Datacenter),
-                    3 => (mbData.AverageSalePrice.Region, mbData.Region),
-                    _ => (null, null),
-                };
-                if (salePrice != null && GetNqHqData(salePrice.Nq, salePrice.Hq) != null) {
-                    if (payloads.Count > 0)
-                        payloads.Add(new TextPayload("\n"));
-                    payloads.Add(new TextPayload($"Average sale price ({scope}): "));
-                    PrintNqHq(salePrice.Nq, salePrice.Hq);
-                }
+            if (GetNqHqData(mbData.AverageSalePriceNQ, mbData.AverageSalePriceHQ) != null && plugin.Configuration.ShowAverageSalePrice) {
+                if (payloads.Count > 0)
+                    payloads.Add(new TextPayload("\n"));
+                payloads.Add(new TextPayload($"Average sale price ({mbData.Scope}): "));
+                PrintNqHq(mbData.AverageSalePriceNQ, mbData.AverageSalePriceHQ);
             }
 
-            if (plugin.Configuration.ShowDailySaleVelocityIn > 0) {
-                var (saleVelocity, scope) = plugin.Configuration.ShowDailySaleVelocityIn switch {
-                    1 => (mbData.DailySaleVelocity.World, mbData.HomeWorld),
-                    2 => (mbData.DailySaleVelocity.Datacenter, mbData.Datacenter),
-                    3 => (mbData.DailySaleVelocity.Region, mbData.Region),
-                    _ => (null, null),
-                };
-                if (saleVelocity != null && GetNqHqData(saleVelocity.Nq, saleVelocity.Hq) != null) {
-                    if (payloads.Count > 0)
-                        payloads.Add(new TextPayload("\n"));
-                    payloads.Add(new TextPayload($"Sales per day ({scope}): "));
-                    PrintNqHq(saleVelocity.Nq, saleVelocity.Hq, format: "N1", withGilIcon: false);
-                }
+            if (GetNqHqData(mbData.DailySaleVelocityNQ, mbData.DailySaleVelocityHQ) != null && plugin.Configuration.ShowDailySaleVelocity) {
+                if (payloads.Count > 0)
+                    payloads.Add(new TextPayload("\n"));
+                payloads.Add(new TextPayload($"Sales per day ({mbData.Scope}): "));
+                PrintNqHq(mbData.DailySaleVelocityNQ, mbData.DailySaleVelocityHQ, format: "N1", withGilIcon: false);
             }
 
             if (payloads.Count == 0) {
@@ -334,7 +311,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         }
     }
 
-    public void FetchFailed(ICollection<uint> items) {
+    public void FetchFailed(IList<uint> items) {
         if (!items.Contains((uint)Service.GameGui.HoveredItem % 500000)) return;
         var newText = ParseMbData(false, null, LookupState.Faulted);
         Service.Framework.RunOnFrameworkThread(() => {
@@ -362,7 +339,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                 var node = atkUnitBase->UldManager.NodeList[n];
                 if (node == null)
                     continue;
-                if (node->NodeId != NodeId)
+                if (node->NodeID != NodeId)
                     continue;
                 if (node->ParentNode != null && node->ParentNode->ChildNode == node)
                     node->ParentNode->ChildNode = node->PrevSiblingNode;
