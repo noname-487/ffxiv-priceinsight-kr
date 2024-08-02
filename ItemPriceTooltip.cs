@@ -107,12 +107,12 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
         if (lookupState == LookupState.Faulted) {
             payloads.Add(new UIForegroundPayload(20));
             payloads.Add(new IconPayload(BitmapFontIcon.Warning));
-            payloads.Add(new TextPayload(" Failed to obtain marketboard info.\n        This is likely an issue with Universalis.\n        Press alt to retry or check the /xllog."));
+            payloads.Add(new TextPayload(" 거래소 정보를 받아오지 못했습니다.\n        Universalis의 문제일 가능성이 높습니다.\n        Alt 키를 눌러 새로고침 하거나 /xllog 로 확인해보세요."));
             payloads.Add(new UIForegroundPayload(0));
         } else if (mbData == null) {
             payloads.Add(new UIForegroundPayload(20));
             payloads.Add(new IconPayload(BitmapFontIcon.LevelSync));
-            payloads.Add(new TextPayload(" Marketboard info is being obtained.."));
+            payloads.Add(new TextPayload(" 거래소 정보 받아오는 중.."));
             payloads.Add(new UIForegroundPayload(0));
         } else {
             var ownWorld = mbData.HomeWorld;
@@ -123,7 +123,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             var priceHeader = false;
             void PriceHeader() {
                 if (priceHeader) return;
-                payloads.Add(new TextPayload("Marketboard Price:"));
+                payloads.Add(new TextPayload("거래소 가격:"));
                 priceHeader = true;
             }
 
@@ -172,7 +172,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                     ? mbData.RegionMinimumPriceHQ?.World ?? mbData.RegionMinimumPriceNQ?.World
                     : mbData.RegionMinimumPriceNQ?.World ?? mbData.RegionMinimumPriceHQ?.World;
 
-                payloads.Add(new TextPayload("\n  Cheapest ("));
+                payloads.Add(new TextPayload("\n  최저가 ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                 payloads.Add(new TextPayload($"{minWorldRegion}"));
                 if (plugin.Configuration.ShowDatacenterOnCrossWorlds)
@@ -189,7 +189,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             if (minWorld != ownWorld && minWorld != null && (plugin.Configuration.ShowDatacenter || (plugin.Configuration.ShowRegion && minDc == ownDc))) {
                 PriceHeader();
 
-                payloads.Add(new TextPayload("\n  Cheapest ("));
+                payloads.Add(new TextPayload("\n  최저가 ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                 payloads.Add(new TextPayload($"{minWorld}): "));
                 PrintNqHq(mbData.MinimumPriceNQ?.Price, mbData.MinimumPriceHQ?.Price);
@@ -203,7 +203,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             if (GetNqHqData(mbData.OwnMinimumPriceNQ,  mbData.OwnMinimumPriceHQ) != null && (plugin.Configuration.ShowWorld || (plugin.Configuration.ShowDatacenter && minWorld == ownWorld))) {
                 PriceHeader();
 
-                payloads.Add(new TextPayload($"\n  Home ({ownWorld}): "));
+                payloads.Add(new TextPayload($"\n  고향 서버 ({ownWorld}): "));
                 PrintNqHq(mbData.OwnMinimumPriceNQ?.Price, mbData.OwnMinimumPriceHQ?.Price);
 
                 if (plugin.Configuration.ShowAge) {
@@ -217,7 +217,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                 if (recentHeader) return;
                 if (payloads.Count > 0)
                     payloads.Add(new TextPayload("\n"));
-                payloads.Add(new TextPayload("Most Recent Purchase:"));
+                payloads.Add(new TextPayload("최근 거래:"));
                 recentHeader = true;
             }
 
@@ -230,7 +230,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                     ? mbData.RegionMostRecentPurchaseHQ?.World ?? mbData.RegionMostRecentPurchaseNQ?.World
                     : mbData.RegionMostRecentPurchaseNQ?.World ?? mbData.RegionMostRecentPurchaseHQ?.World;
 
-                payloads.Add(new TextPayload("\n  Cheapest ("));
+                payloads.Add(new TextPayload("\n  최저가 ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                 payloads.Add(new TextPayload($"{recentWorldRegion} {recentDc}): "));
                 PrintNqHq(mbData.RegionMostRecentPurchaseNQ?.Price, mbData.RegionMostRecentPurchaseHQ?.Price);
@@ -244,7 +244,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             if (recentWorld != ownWorld && recentWorld != null && (plugin.Configuration.ShowMostRecentPurchase || (plugin.Configuration.ShowMostRecentPurchaseRegion && recentDc == ownDc))) {
                 RecentHeader();
 
-                payloads.Add(new TextPayload("\n  Cheapest ("));
+                payloads.Add(new TextPayload("\n  최저가 ("));
                 payloads.Add(new IconPayload(BitmapFontIcon.CrossWorld));
                 payloads.Add(new TextPayload($"{recentWorld}): "));
                 PrintNqHq(mbData.MostRecentPurchaseNQ?.Price, mbData.MostRecentPurchaseHQ?.Price);
@@ -258,7 +258,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             if (GetNqHqData(mbData.OwnMostRecentPurchaseNQ, mbData.OwnMostRecentPurchaseHQ) != null && (plugin.Configuration.ShowMostRecentPurchaseWorld || (plugin.Configuration.ShowMostRecentPurchase && recentWorld == ownWorld))) {
                 RecentHeader();
 
-                payloads.Add(new TextPayload($"\n  Home ({ownWorld}): "));
+                payloads.Add(new TextPayload($"\n  고향 서버 ({ownWorld}): "));
                 PrintNqHq(mbData.OwnMostRecentPurchaseNQ?.Price, mbData.OwnMostRecentPurchaseHQ?.Price);
 
                 if (plugin.Configuration.ShowAge) {
@@ -270,20 +270,20 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
             if (GetNqHqData(mbData.AverageSalePriceNQ, mbData.AverageSalePriceHQ) != null && plugin.Configuration.ShowAverageSalePrice) {
                 if (payloads.Count > 0)
                     payloads.Add(new TextPayload("\n"));
-                payloads.Add(new TextPayload($"Average sale price ({mbData.Scope}): "));
+                payloads.Add(new TextPayload($"평균 거래가 ({mbData.Scope}): "));
                 PrintNqHq(mbData.AverageSalePriceNQ, mbData.AverageSalePriceHQ);
             }
 
             if (GetNqHqData(mbData.DailySaleVelocityNQ, mbData.DailySaleVelocityHQ) != null && plugin.Configuration.ShowDailySaleVelocity) {
                 if (payloads.Count > 0)
                     payloads.Add(new TextPayload("\n"));
-                payloads.Add(new TextPayload($"Sales per day ({mbData.Scope}): "));
+                payloads.Add(new TextPayload($"일일 거래량 ({mbData.Scope}): "));
                 PrintNqHq(mbData.DailySaleVelocityNQ, mbData.DailySaleVelocityHQ, format: "N1", withGilIcon: false);
             }
 
             if (payloads.Count == 0) {
                 payloads.Add(new UIForegroundPayload(20));
-                payloads.Add(new TextPayload("No marketboard info is known for this item.\nTry opening the ingame marketboard."));
+                payloads.Add(new TextPayload("이 아이템에 대한 거래소 가격을 알 수 없습니다.\n게임내 거래소를 확인해주세요."));
                 payloads.Add(new UIForegroundPayload(0));
             }
         }
@@ -305,7 +305,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                         UpdateItemTooltip((AtkUnitBase*)tooltip, newText);
                     }
                 } catch (Exception e) {
-                    Service.PluginLog.Error(e, "Failed to update tooltip");
+                    Service.PluginLog.Error(e, "툴팁 업데이트 실패");
                 }
             });
         }
@@ -324,7 +324,7 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
                     UpdateItemTooltip((AtkUnitBase*)tooltip, newText);
                 }
             } catch (Exception e) {
-                Service.PluginLog.Error(e, "Failed to update tooltip");
+                Service.PluginLog.Error(e, "툴팁 업데이트 실패");
             }
         });
     }
@@ -356,12 +356,12 @@ public class ItemPriceTooltip(PriceInsightPlugin plugin) : IDisposable {
 
     private static string PrintDuration(TimeSpan span) {
         if (span.Days > 0)
-            return $"{span.Days}d ago";
+            return $"{span.Days}일 전";
         if (span.Hours > 0)
-            return $"{span.Hours}h ago";
+            return $"{span.Hours}시간 전";
         if (span.Minutes > 0)
-            return $"{span.Minutes}m ago";
-        return "just now";
+            return $"{span.Minutes}분 전";
+        return "방금";
     }
 
     public void Dispose() {

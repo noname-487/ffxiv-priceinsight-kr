@@ -1,13 +1,13 @@
-name: Price Insight
+name: Price Insight KR
 author: Kouzukii
-punchline: See item marketboard prices on hover!
+punchline: 거래소 가격을 간편히 확인하세요!
 description: |
-  Whenever you mouseover an item, it will show you the NQ/HQ marketboard prices at the bottom as well as the most recent purchase.
-  Prices are retrieved from Universalis.app and cached for 90 minutes.
-  To refresh a price you can tap Alt while hovering over an item.
-repo_url: "https://github.com/kouzukii/ffxiv-priceinsight"
+  아이템에 마우스를 올리면 툴팁 가장 아래에 있는 NQ/HQ 거래소 가격과 가장 최근에 거래내역이 표시됩니다.
+  가격은 Universalis.app을 통해 90분 마다 갱신됩니다.
+  가격을 새로고침 하려면 아이템에 커서를 올리고 Alt키를 눌러주세요.
+repo_url: "https://github.com/noname-487/ffxiv-priceinsight-kr"
 tags: [marketboard, items, price]
 category_tags: [ui, utility]
-icon_url: https://raw.githubusercontent.com/Kouzukii/ffxiv-priceinsight/master/PriceInsight/images/icon.png
+icon_url: https://raw.githubusercontent.com/noname-487/ffxiv-priceinsight-kr/main/images/icon.png
 image_urls:
-  - https://raw.githubusercontent.com/Kouzukii/ffxiv-priceinsight/master/PriceInsight/images/image1.png
+  - https://raw.githubusercontent.com/noname-487/ffxiv-priceinsight-kr/main/images/image1.png

@@ -45,7 +45,8 @@ public class PriceInsightPlugin : IDalamudPlugin {
         Hooks = new Hooks(this);
         configUi = new ConfigUI(this);
 
-        Service.CommandManager.AddHandler("/priceinsight", new CommandInfo((_, _) => OpenConfigUI()) { HelpMessage = "Price Insight Configuration Menu" });
+        Service.CommandManager.AddHandler("/priceinsight", new CommandInfo((_, _) => OpenConfigUI()) { HelpMessage = "Price Insight 설정창" });
+        Service.CommandManager.AddHandler("/pi", new CommandInfo((_, _) => OpenConfigUI()) { HelpMessage = "Price Insight 설정창" });
 
         pluginInterface.UiBuilder.Draw += () => configUi.Draw();
         pluginInterface.UiBuilder.OpenConfigUi += OpenConfigUI;
@@ -120,6 +121,7 @@ public class PriceInsightPlugin : IDalamudPlugin {
 
     public void Dispose() {
         Service.CommandManager.RemoveHandler("/priceinsight");
+        Service.CommandManager.RemoveHandler("/pi");
         Service.Framework.Update -= FrameworkOnUpdate;
         Service.ClientState.Logout -= ClearCache;
         Hooks.Dispose();
