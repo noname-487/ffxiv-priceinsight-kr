@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using Dalamud.Game.Addon.Lifecycle;
+using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using Dalamud.Game.Command;
 using Dalamud.Plugin;
-using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace PriceInsight;
@@ -12,34 +13,16 @@ public class PriceInsightPlugin : IDalamudPlugin {
     public ItemPriceTooltip ItemPriceTooltip { get; }
     public Hooks Hooks { get; }
     public ItemPriceLookup ItemPriceLookup { get; private set; }
-    public UniversalisClient UniversalisClient { get; }
+    public UniversalisClientV2 UniversalisClientV2 { get; }
 
     private readonly ConfigUI configUi;
 
-    private readonly Dictionary<InventoryType, DateTime> inventoriesToScan = new() {
-        { InventoryType.Inventory1, DateTime.UnixEpoch },
-        { InventoryType.Inventory2, DateTime.UnixEpoch },
-        { InventoryType.Inventory3, DateTime.UnixEpoch },
-        { InventoryType.Inventory4, DateTime.UnixEpoch },
-        { InventoryType.SaddleBag1, DateTime.UnixEpoch },
-        { InventoryType.SaddleBag2, DateTime.UnixEpoch },
-        { InventoryType.PremiumSaddleBag1, DateTime.UnixEpoch },
-        { InventoryType.PremiumSaddleBag2, DateTime.UnixEpoch },
-        { InventoryType.RetainerPage1, DateTime.UnixEpoch },
-        { InventoryType.RetainerPage2, DateTime.UnixEpoch },
-        { InventoryType.RetainerPage3, DateTime.UnixEpoch },
-        { InventoryType.RetainerPage4, DateTime.UnixEpoch },
-        { InventoryType.RetainerPage5, DateTime.UnixEpoch },
-        { InventoryType.RetainerPage6, DateTime.UnixEpoch },
-        { InventoryType.RetainerPage7, DateTime.UnixEpoch },
-    };
-
-    public PriceInsightPlugin(DalamudPluginInterface pluginInterface) {
+    public PriceInsightPlugin(IDalamudPluginInterface pluginInterface) {
         Service.Initialize(pluginInterface);
 
         Configuration = Configuration.Get(pluginInterface);
 
-        UniversalisClient = new UniversalisClient(this);
+        UniversalisClientV2 = new UniversalisClientV2();
         ItemPriceLookup = new ItemPriceLookup(this);
         ItemPriceTooltip = new ItemPriceTooltip(this);
         Hooks = new Hooks(this);
@@ -47,67 +30,74 @@ public class PriceInsightPlugin : IDalamudPlugin {
 
         Service.CommandManager.AddHandler("/priceinsight", new CommandInfo((_, _) => OpenConfigUI()) { HelpMessage = "Price Insight Configuration Menu" });
 
+        Service.AddonLifecycle.RegisterListener(AddonEvent.PostRequestedUpdate, ["Inventory", "InventoryLarge", "InventoryExpansion"], HandleInventoryUpdate);
+        Service.AddonLifecycle.RegisterListener(AddonEvent.PreSetup, "InventoryBuddy", HandleSaddlebagOpen);
+        Service.AddonLifecycle.RegisterListener(AddonEvent.PreSetup,  ["InventoryRetainer", "InventoryRetainerLarge"], HandleRetainerOpen);
+
         pluginInterface.UiBuilder.Draw += () => configUi.Draw();
         pluginInterface.UiBuilder.OpenConfigUi += OpenConfigUI;
-        Service.Framework.Update += FrameworkOnUpdate;
         Service.ClientState.Logout += ClearCache;
+        Service.ClientState.Login += ClientOnLogin;
+    }
+
+    private void ClientOnLogin() {
+        CheckInventories(InventoryType.Inventory1, InventoryType.Inventory2, InventoryType.Inventory3, InventoryType.Inventory4);
+    }
+
+    private DateTime lastCheckInventory = DateTime.MinValue;
+    private void HandleInventoryUpdate(AddonEvent type, AddonArgs args) {
+        if ((DateTime.Now - lastCheckInventory).TotalMinutes < 1) return;
+        CheckInventories(InventoryType.Inventory1, InventoryType.Inventory2, InventoryType.Inventory3, InventoryType.Inventory4);
+        lastCheckInventory = DateTime.Now;
+    }
+
+    private DateTime lastCheckSaddlebag = DateTime.MinValue;
+    private void HandleSaddlebagOpen(AddonEvent type, AddonArgs args) {
+        if ((DateTime.Now - lastCheckSaddlebag).TotalSeconds < 30) return;
+        CheckInventories(InventoryType.SaddleBag1, InventoryType.SaddleBag2, InventoryType.PremiumSaddleBag1, InventoryType.PremiumSaddleBag2);
+        lastCheckSaddlebag = DateTime.Now;
+    }
+
+    private DateTime lastCheckRetainer = DateTime.MinValue;
+    private void HandleRetainerOpen(AddonEvent type, AddonArgs args) {
+        if ((DateTime.Now - lastCheckRetainer).TotalSeconds < 5) return;
+        CheckInventories(InventoryType.RetainerPage1, InventoryType.RetainerPage2, InventoryType.RetainerPage3, InventoryType.RetainerPage4,
+            InventoryType.RetainerPage5, InventoryType.RetainerPage6, InventoryType.RetainerPage7);
+        lastCheckRetainer = DateTime.Now;
     }
 
     public void ClearCache() {
-        foreach (var key in inventoriesToScan.Keys) {
-            inventoriesToScan[key] = DateTime.UnixEpoch;
-        }
         var ipl = ItemPriceLookup;
         ItemPriceLookup = new ItemPriceLookup(this);
         ipl.Dispose();
     }
 
-    private void FrameworkOnUpdate(IFramework framework) {
-        if (ItemPriceLookup.NeedsClearing)
-            ClearCache();
+    private void CheckInventories(params InventoryType[] inventoriesToScan) {
         if (Service.ClientState.LocalContentId == 0 || !ItemPriceLookup.CheckReady())
             return;
-        if(!Configuration.PrefetchInventory) 
+        if (!Configuration.PrefetchInventory)
             return;
+        Service.PluginLog.Debug($"Prefetch: checking {inventoriesToScan.Length} inventories");
         try {
+            var items = new HashSet<uint>();
             unsafe {
                 var manager = InventoryManager.Instance();
-                var items = new HashSet<uint>();
-                foreach (var (type, lastUpdate) in inventoriesToScan) {
-                    if ((DateTime.Now - lastUpdate).TotalMinutes < 59)
-                        continue;
-                    var container = manager->GetInventoryContainer(type);
+                foreach (var inv in inventoriesToScan) {
+                    var container = manager->GetInventoryContainer(inv);
                     if (container == null || container->Loaded == 0)
                         continue;
-                    var empty = true;
                     for (var i = 0; i < container->Size; i++) {
                         var item = &container->Items[i];
-                        var itemId = item->ItemID;
-                        if (itemId == 0) {
-                            continue;
-                        }
-
-                        items.Add(itemId);
-                        empty = false;
-
-                        if (items.Count >= 50) {
-                            ItemPriceLookup.Fetch(items);
-                            items.Clear();
-                        }
+                        var itemId = item->ItemId;
+                        if (itemId != 0)
+                            items.Add(itemId);
                     }
-
-                    if (empty) {
-                        // The inventory was completely empty (retainer and companion inventory are empty before they're loaded)
-                        inventoriesToScan[type] = DateTime.Now.AddSeconds(-59 * 60 + 10);
-                        continue;
-                    }
-
-                    inventoriesToScan[type] = DateTime.Now;
                 }
+            }
 
-                if (items.Count > 0) {
-                    ItemPriceLookup.Fetch(items);
-                }
+            if (items.Count > 0) {
+                Service.PluginLog.Debug($"Prefetch: queueing {items.Count} items");
+                ItemPriceLookup.Fetch(items);
             }
         } catch (Exception e) {
             Service.PluginLog.Error(e, "Failed to process update");
@@ -120,12 +110,12 @@ public class PriceInsightPlugin : IDalamudPlugin {
 
     public void Dispose() {
         Service.CommandManager.RemoveHandler("/priceinsight");
-        Service.Framework.Update -= FrameworkOnUpdate;
         Service.ClientState.Logout -= ClearCache;
+        Service.ClientState.Login -= ClientOnLogin;
         Hooks.Dispose();
         ItemPriceTooltip.Dispose();
         ItemPriceLookup.Dispose();
-        UniversalisClient.Dispose();
+        UniversalisClientV2.Dispose();
         configUi.Dispose();
     }
 }
